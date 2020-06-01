@@ -304,6 +304,12 @@ fn main2() {
 
     let mut last_resource_version = 0;
     events_loop.run(move |event, _event_loop, control_flow| {
+        *control_flow = glutin::event_loop::ControlFlow::Poll;
+
+        if !handle_window_event(&mut window, &mut game, &mut ui_container, event) {
+            return;
+        }
+
         let now = Instant::now();
         let diff = now.duration_since(last_frame);
         last_frame = now;
@@ -361,8 +367,6 @@ fn main2() {
         }
         window.swap_buffers().expect("Failed to swap GL buffers");
 
-        handle_window_event(&mut window, &mut game, &mut ui_container, event);
-
         if game.should_close {
             *control_flow = glutin::event_loop::ControlFlow::Exit;
         }
@@ -372,9 +376,10 @@ fn main2() {
 fn handle_window_event<T>(window: &mut glutin::WindowedContext<glutin::PossiblyCurrent>,
                        game: &mut Game,
                        ui_container: &mut ui::Container,
-                       event: glutin::event::Event<T>) {
+                       event: glutin::event::Event<T>) -> bool {
     use glutin::event::*;
     match event {
+        Event::MainEventsCleared => return true,
         Event::DeviceEvent{event, ..} => match event {
             DeviceEvent::MouseMotion{delta:(xrel, yrel)} => {
                 let (rx, ry) =
@@ -444,12 +449,12 @@ fn handle_window_event<T>(window: &mut glutin::WindowedContext<glutin::PossiblyC
                             game.focused = true;
                             window.window().set_cursor_grab(true).unwrap();
                             window.window().set_cursor_visible(false);
-                            return;
-                        }
-                        if !game.focused {
-                            window.window().set_cursor_grab(false).unwrap();
-                            window.window().set_cursor_visible(true);
-                            ui_container.click_at(game, game.last_mouse_x, game.last_mouse_y, width, height);
+                        } else {
+                            if !game.focused {
+                                window.window().set_cursor_grab(false).unwrap();
+                                window.window().set_cursor_visible(true);
+                                ui_container.click_at(game, game.last_mouse_x, game.last_mouse_y, width, height);
+                            }
                         }
                     },
                     (ElementState::Pressed, MouseButton::Right) => {
@@ -539,4 +544,6 @@ fn handle_window_event<T>(window: &mut glutin::WindowedContext<glutin::PossiblyC
 
         _ => (),
     }
+
+    false
 }
